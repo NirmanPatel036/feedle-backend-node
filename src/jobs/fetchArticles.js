@@ -104,8 +104,27 @@ function enhanceBbcImage(url) {
   }
 }
 
+function enhanceGuardianImage(url) {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname;
+    if (!host.includes("guim.co.uk") && !host.includes("guardian")) {
+      return url;
+    }
+    parsed.searchParams.set("width", "1600");
+    parsed.searchParams.set("quality", "85");
+    parsed.searchParams.set("dpr", "2");
+    parsed.searchParams.set("fit", "max");
+    parsed.searchParams.set("auto", "format");
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
 function normalizeImage(url) {
-  return enhanceBbcImage(url);
+  return enhanceGuardianImage(enhanceBbcImage(url));
 }
 
 function formatDateOnly(date) {
@@ -168,6 +187,7 @@ async function fetchFromGuardian(category) {
       "order-by": "newest",
       "page-size": 20,
       "show-fields": "thumbnail,trailText",
+      "show-elements": "image",
       "api-key": process.env.GUARDIAN_API_KEY,
     },
     headers: { "User-Agent": "Mozilla/5.0" },
@@ -177,11 +197,20 @@ async function fetchFromGuardian(category) {
     title: item.webTitle,
     description: stripHtml(item.fields?.trailText || ""),
     url: item.webUrl,
-    urlToImage: normalizeImage(item.fields?.thumbnail) || null,
+    urlToImage: extractGuardianImage(item) || null,
     source: "The Guardian",
     publishedAt: item.webPublicationDate,
     category,
   }));
+}
+
+function extractGuardianImage(item) {
+  const imageEl = item.elements?.find((el) => el.type === "image");
+  const bestAsset = [...(imageEl?.assets ?? [])]
+    .filter((asset) => asset.file && (asset.typeData?.width ?? 0) > 0)
+    .sort((a, b) => (b.typeData?.width ?? 0) - (a.typeData?.width ?? 0))[0];
+  const url = bestAsset?.file || item.fields?.thumbnail || null;
+  return normalizeImage(url);
 }
 
 function extractImage(item) {
