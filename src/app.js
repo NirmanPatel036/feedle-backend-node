@@ -21,7 +21,7 @@ app.use(
     origin: [
       "http://localhost:3000",
       "http://localhost:8080",
-      "https://feedle-rho.vercel.app"
+      "https://feedle-rho.vercel.app",
       "https://feedle-backend-java-production.up.railway.app/feedle/"
     ],
     credentials: true,
